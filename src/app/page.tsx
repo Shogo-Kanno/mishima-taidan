@@ -23,26 +23,39 @@ export default function ChatPage() {
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+
+    // デバッグ用ログ：関数が呼ばれたか、状態がどうなっているかを確認
+    console.log("Submit fired. Input:", input, "isLoading:", isLoading);
+
+    if (!input.trim() || isLoading) {
+      console.log("処理を中断：入力が空、またはローディング中です");
+      return;
+    }
 
     const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const initialMishimaMessage: Message = { role: "mishima", content: "" };
+
+    setMessages((prev) => [...prev, userMessage, initialMishimaMessage]);
     setInput("");
     setIsLoading(true);
 
-    // APIが受け取れるメッセージ履歴の形に変換
     const chatHistory = [...messages, userMessage].map((m) => ({
       role: m.role === "user" ? "user" : "model",
       content: m.content,
     }));
 
     try {
+      console.log("APIへ通信を開始します...");
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: chatHistory, mode }),
       });
 
+      // API側でエラー（500など）が起きた場合の安全網
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
       if (!response.body) throw new Error("応答の取得に失敗しました。");
 
       const reader = response.body.getReader();
@@ -50,26 +63,30 @@ export default function ChatPage() {
       let done = false;
       let chunks = "";
 
-      // AI応答用の空のメッセージ枠を先に追加
-      setMessages((prev) => [...prev, { role: "mishima", content: "" }]);
-
-      // ストリーミングデータを読み込みながら逐次画面を更新
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunkValue = decoder.decode(value);
-        chunks += chunkValue;
+        if (value) {
+          // stream: true をつけることで、日本語のマルチバイト文字が途切れても文字化けを防ぐ
+          chunks += decoder.decode(value, { stream: !done });
 
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1].content = chunks;
-          return updated;
-        });
+          // ▼ 修正点：Reactの厳格な掟に従い、オブジェクトを直接書き換えずに新しく作り直す
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content: chunks,
+            };
+            return updated;
+          });
+        }
       }
+      console.log("ストリーミング完了");
     } catch (error) {
-      console.error(error);
+      console.error("エラーを検知:", error);
       setMessages((prev) => [
-        ...prev,
+        ...prev.slice(0, -1),
         {
           role: "mishima",
           content: "対談の途中で通信が途絶した。霊界の壁は厚いようだ。",
@@ -77,9 +94,9 @@ export default function ChatPage() {
       ]);
     } finally {
       setIsLoading(false);
+      console.log("isLoading を false にリセットしました");
     }
   };
-
   return (
     <div className="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-serif selection:bg-red-900 selection:text-white">
       {/* ヘッダーとモード切り替え */}
@@ -141,34 +158,29 @@ export default function ChatPage() {
               >
                 {msg.role === "user" ? "生者" : "三島由紀夫"}
               </div>
-              <p className="leading-relaxed whitespace-pre-wrap tracking-wide">
-                {msg.content}
-              </p>
+
+              {/* ▼ ここがポイント：メッセージが空（受信前）なら3連ドットを出す ▼ */}
+              {msg.role === "mishima" && msg.content === "" && isLoading ? (
+                <div className="flex items-center space-x-2 py-1 text-neutral-500 text-sm animate-fade-in">
+                  <span className="font-serif italic tracking-wide text-xs text-neutral-600 mr-1">
+                    思考を言語化している
+                  </span>
+                  <div className="flex space-x-1">
+                    <div className="w-1.5 h-1.5 bg-red-800 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-1.5 h-1.5 bg-red-700 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-bounce"></div>
+                  </div>
+                </div>
+              ) : (
+                <p className="leading-relaxed whitespace-pre-wrap tracking-wide">
+                  {msg.content}
+                </p>
+              )}
             </div>
           </div>
         ))}
-        {isLoading && messages[messages.length - 1]?.content === "" && (
-          <div className="flex justify-start animate-fade-in">
-            <div className="bg-neutral-900/40 border border-red-950/30 p-4 rounded-lg shadow-xl shadow-red-950/5 max-w-[85%]">
-              <div className="text-xs mb-2 font-sans tracking-wider text-red-800 font-bold">
-                三島由紀夫
-              </div>
-              <div className="flex items-center space-x-2 py-1 px-2 text-neutral-500 text-sm">
-                <span className="font-serif italic tracking-wide text-xs text-neutral-600 mr-1">
-                  思考を言語化している
-                </span>
-                <div className="flex space-x-1">
-                  <div className="w-1.5 h-1.5 bg-red-800 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-red-700 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-bounce"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={scrollRef} />
       </main>
-
       {/* 入力フォーム */}
       <footer className="border-t border-neutral-800 p-4 bg-neutral-900/30 backdrop-blur">
         <form
