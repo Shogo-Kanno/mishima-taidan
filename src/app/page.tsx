@@ -148,9 +148,21 @@ export default function ChatPage() {
           </div>
         ))}
         {isLoading && messages[messages.length - 1]?.content === "" && (
-          <div className="flex justify-start">
-            <div className="bg-neutral-900/30 border border-neutral-800 p-4 rounded text-neutral-500 text-sm animate-pulse">
-              思考を言語化している...
+          <div className="flex justify-start animate-fade-in">
+            <div className="bg-neutral-900/40 border border-red-950/30 p-4 rounded-lg shadow-xl shadow-red-950/5 max-w-[85%]">
+              <div className="text-xs mb-2 font-sans tracking-wider text-red-800 font-bold">
+                三島由紀夫
+              </div>
+              <div className="flex items-center space-x-2 py-1 px-2 text-neutral-500 text-sm">
+                <span className="font-serif italic tracking-wide text-xs text-neutral-600 mr-1">
+                  思考を言語化している
+                </span>
+                <div className="flex space-x-1">
+                  <div className="w-1.5 h-1.5 bg-red-800 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-red-700 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-bounce"></div>
+                </div>
+              </div>
             </div>
           </div>
         )}
