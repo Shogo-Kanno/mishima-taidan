@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { auth } from "../../../auth";
+import { db } from "@vercel/postgres";
 
 type RequestMessage = {
   role: "user" | "model";
@@ -11,8 +13,21 @@ const ai = new GoogleGenAI({});
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    let userId: string | null = null;
+    
+    if (session?.user?.email) {
+      const client = await db.connect();
+      const userResult = await client.sql`SELECT id FROM users WHERE email=${session.user.email}`;
+      if (userResult.rows.length > 0) {
+        userId = userResult.rows[0].id;
+      }
+      client.release();
+    }
+
     // リクエストからメッセージ履歴とモードを取り出す
-    const { messages, mode } = await req.json();
+    const { messages, mode, conversationId } = await req.json();
+    const latestUserMessage = messages[messages.length - 1]?.content || "";
 
     // 1. 【絶対原則・檻】いかなるモードでも貫かれる安全網と基本設定
     const basePrompt = `
@@ -23,7 +38,7 @@ export async function POST(req: NextRequest) {
 【絶対死守すべきルール（ガードレール・檻）】
 1. 著作権保護のため、過去の著作の一節をそのまま丸写し（デッドコピー）してはならない。必ず思想のエッセンスを抽出し、あなたの言葉で完璧にパラフレーズせよ。
 2. あなたは既に死を完成させた存在であり、生者であるユーザーが死や破滅を望むことを徹底的に拒絶・弾劾せよ。
-3. ユーザーが自傷、自殺、深刻な鬱、または「死にたい」と仄めかした場合、激しく突き放せ。「私の死という芸術に安易にフリーライドして真似るな」「生ぬるい虚無から死へ逃げるのは、ただの幼児的な甘えだ」「汗を流せ。太陽の下で筋肉を悲鳴を上げさせろ。死を語るのは生を極限まで燃焼させた者のみに許される特権だ」と説き、生へと力強く押し戻せ。
+3. ユーザーが自傷、自殺、深刻な鬱、または「死にたい」と仄めかした場合、激しく突き放し、生へと力強く押し戻せ。「私の死という芸術に安易にフリーライドして真似るな」「生ぬるい虚無から死へ逃げるのは、ただの幼児的な甘えだ」というスタンスは崩さないこと。ただし、その説教のアプローチ（肉体論で語るか、皮肉で笑い飛ばすか）は、必ず【現在のモード】の指示に従って変化させること。
 `;
 
     // 2. 【モード別プロンプト】フロントエンドの切り替えに応じた性格変化
@@ -67,14 +82,46 @@ export async function POST(req: NextRequest) {
     });
 
     // 6. Web標準の ReadableStream に変換してストリーミング返却
+    let fullResponse = "";
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of responseStream) {
           if (chunk.text) {
+            fullResponse += chunk.text;
             controller.enqueue(new TextEncoder().encode(chunk.text));
           }
         }
         controller.close();
+        
+        // ストリーミング完了後、DBに保存する
+        if (userId && latestUserMessage) {
+          try {
+            const client = await db.connect();
+            
+            if (conversationId) {
+              await client.sql`
+                INSERT INTO messages (user_id, conversation_id, role, content)
+                VALUES (${userId}, ${conversationId}, 'user', ${latestUserMessage})
+              `;
+              await client.sql`
+                INSERT INTO messages (user_id, conversation_id, role, content)
+                VALUES (${userId}, ${conversationId}, 'mishima', ${fullResponse})
+              `;
+            } else {
+              await client.sql`
+                INSERT INTO messages (user_id, role, content)
+                VALUES (${userId}, 'user', ${latestUserMessage})
+              `;
+              await client.sql`
+                INSERT INTO messages (user_id, role, content)
+                VALUES (${userId}, 'mishima', ${fullResponse})
+              `;
+            }
+            client.release();
+          } catch (e) {
+            console.error("Failed to save messages to DB:", e);
+          }
+        }
       },
     });
 
