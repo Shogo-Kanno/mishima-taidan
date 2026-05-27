@@ -1,36 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 三島対談 (Mishima Taidan)
 
-## Getting Started
+![三島対談 スクリーンショット](./public/screenshot.png)
 
-First, run the development server:
+三島由紀夫の文体と世界観を学習したAIと、深く重厚な対話ができるWebアプリケーションです。
+単なるAIチャットではなく、実存主義的な悩みや世俗への皮肉を投げかけることで、生々しく血の通った「言葉」が返ってきます。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## ✨ 主な機能
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **深い思想的対話**: ユーザーの入力に対し、三島由紀夫特有のレトリックと美意識に基づいた返答を行います。
+- **2つのモード**:
+  - `太陽と鉄 (実存・肉体)`: 現代の虚無や肉体の苦悩に対する喝。
+  - `不道徳教育 (皮肉・諧謔)`: 日々の小さな怠慢や世俗の不満に対するシニカルなユーモア。
+- **肉声による再生 (VOICEVOX連携)**: 紡がれた言葉を、ディストーションとバンドパスフィルターを通した「拡声器越しのような重厚な声」で実際に聴くことができます。
+- **複数チャット（スレッド）管理**: 新しい対談を始めたり、過去の対談記録をサイドバーからいつでも振り返ることができます。
+- **ユーザー認証**: メールアドレスとパスワードによるセキュアなログイン・新規登録システム。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
